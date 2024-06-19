@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+rootdir="$(cd "$(dirname "$0")"; pwd)"
+export PATH="${rootdir}/depot_tools:$PATH"
+cd "$rootdir/webrtc/src"
+echo "$rootdir"
+
+# build.gn file
+build_gn_file="BUILD.gn"
+
+# Sed commands to add dependencies section after deps section in webrtc target
+sed -i '/rtc_static_library("webrtc") {/,/^ *}/ {
+  /deps = \[/a\ \ \ \ \ \ "api/video_codecs:builtin_video_decoder_factory",\n\ \ \ \ \ \ "api/video_codecs:builtin_video_encoder_factory",
+}' "$build_gn_file"
+
+echo "Updated build.gn file with new dependencies section for webrtc target."
