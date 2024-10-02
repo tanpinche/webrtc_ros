@@ -2,6 +2,7 @@
 set -e
 rootdir="$(cd "$(dirname "$0")"; pwd)"
 export PATH="${rootdir}/depot_tools:$PATH"
+a="$(dpkg-architecture -qDEB_BUILD_ARCH || uname -m)"
 cd "$rootdir/webrtc/src"
 
 # build.gn file
@@ -11,5 +12,19 @@ build_gn_file="BUILD.gn"
 sed -i '/rtc_static_library("webrtc") {/,/^ *}/ {
   /deps = \[/a\ \ \ \ \ \ "api/video_codecs:builtin_video_decoder_factory",\n\ \ \ \ \ \ "api/video_codecs:builtin_video_encoder_factory",
 }' "$build_gn_file"
+
+
+if [[ "$a" == "arm64" || "$a" == "aarch64" ]]; then
+  sed -i '/video_codecs:video_decoder_factory_template_dav1d_adapter/d' "$build_gn_file"
+  
+  internal_h_file="internal.h"
+  cd "$rootdir/webrtc/src/third_party/boringssl/src/crypto"
+  # Apply sed modifications to internal.h
+  sed -i.bak '/#if *OPENSSL_HAS_BUILTIN(__builtin_addc)/s/$/ \&\& !defined(__cplusplus)/' "$internal_h_file"
+  sed -i.bak '/#if *OPENSSL_HAS_BUILTIN(__builtin_subc)/s/$/ \&\& !defined(__cplusplus)/' "$internal_h_file"
+  
+  echo "Updated $internal_h_file for arm64/aarch64."
+fi
+
 
 echo "Updated build.gn file with new dependencies section for webrtc target."
