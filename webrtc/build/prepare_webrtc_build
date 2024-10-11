@@ -3,6 +3,27 @@ set -e
 rootdir="$(cd "$(dirname "$0")"; pwd)"
 export PATH="$rootdir/depot_tools:$PATH"
 
+# install gcc14.1 which is needed for building webrtc
+cd "$rootdir"
+wget https://ftp.gnu.org/gnu/gcc/gcc-14.1.0/gcc-14.1.0.tar.gz
+tar -xf gcc-14.1.0.tar.gz 
+cd gcc-14.1.0
+./contrib/download_prerequisites
+mkdir build 
+cd build
+../configure --enable-languages=c,c++ --disable-multilib --disable-bootstrap
+make -j$(nproc)
+make install
+
+
+cd "$rootdir/webrtc/src"
+# edit build.gn file to include builtin video encoder factory (it was removed without any proper way to select it using flags)
+build_gn_file="BUILD.gn"
+# Sed commands to add dependencies section after deps section in webrtc target
+sed -i '/rtc_static_library("webrtc") {/,/^ *}/ {
+  /deps = \[/a\ \ \ \ \ \ "api/video_codecs:builtin_video_decoder_factory",\n\ \ \ \ \ \ "api/video_codecs:builtin_video_encoder_factory",
+}' "$build_gn_file"
+
 a="$(dpkg-architecture -qDEB_BUILD_ARCH || uname -m)"
 case "$a" in
 	i?86)
@@ -20,10 +41,27 @@ case "$a" in
 	arm64|aarch64)
 		a=arm64
 		extras=" rtc_include_dav1d_in_internal_decoder_factory=false"
+		cd "$rootdir/gcc-14.1.0"
+		mkdir build-aarch64
+    	cd build-aarch64
+    	../configure --target=aarch64-linux-gnu --enable-languages=c,c++ --disable-multilib --disable-bootstrap
+		make -j$(nproc) 
+		make install 
+		
+
 	;;
 	*)
 		echo>&2 "WARNING: Unknown target platform: $a, continuing anyway"
 	;;
 esac
+
+cd "$rootdir"
+rm -rf gcc-14.1.0 gcc-14.1.0.tar.gz
+
+echo "/usr/local/lib64" >> /etc/ld.so.conf.d/gcc.conf
+echo "/usr/local/lib" >> /etc/ld.so.conf.d/gcc.conf 
+ldconfig
+
+
 cd "$rootdir/webrtc/src"
 gn gen "$1" --args="is_debug=false is_clang=false is_desktop_linux=true use_system_libjpeg=true treat_warnings_as_errors=false fatal_linker_warnings=false use_gio=false use_rtti=true rtc_enable_protobuf=false rtc_include_tests=true use_sysroot=false use_custom_libcxx=false rtc_build_json=true symbol_level=0 target_environment=\"device\" target_os=\"linux\" host_cpu=\"$a\" current_cpu=\"$a\" target_cpu=\"$a\"$extras"

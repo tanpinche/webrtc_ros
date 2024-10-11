@@ -30,12 +30,6 @@ RUN apt-get install -y --no-install-recommends libjpeg-turbo8 libjpeg-turbo8-dev
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python2 1
 
 RUN apt-get update && \
-    apt-get remove -y gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu && \
-    apt-get purge -y gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu && \
-    apt-get autoremove -y && \
-    apt-get clean
-
-RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         libgmp3-dev \
@@ -46,32 +40,6 @@ RUN apt-get update && \
         texinfo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-RUN wget https://ftp.gnu.org/gnu/gcc/gcc-14.1.0/gcc-14.1.0.tar.gz && \
-    tar -xf gcc-14.1.0.tar.gz && \
-    cd gcc-14.1.0 && \
-    ./contrib/download_prerequisites && \
-    mkdir build && \
-    cd build && \
-    ../configure --enable-languages=c,c++ --disable-multilib --disable-bootstrap && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    mkdir build-aarch64 && \
-    cd build-aarch64 && \
-    ../configure --target=aarch64-linux-gnu --enable-languages=c,c++ --disable-multilib --disable-bootstrap && \
-    make -j$(nproc) && \
-    make install && \
-    cd ../.. && \
-    rm -rf gcc-14.1.0 gcc-14.1.0.tar.gz
-
-
-RUN echo "/usr/local/lib64" >> /etc/ld.so.conf.d/gcc.conf && \
-    echo "/usr/local/lib" >> /etc/ld.so.conf.d/gcc.conf && \
-    ldconfig
-
-# Set LD_LIBRARY_PATH to prioritize the new libstdc++ location
-ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH"
 
 WORKDIR /home/3rdparty/jsoncpp/
 RUN git clone https://github.com/open-source-parsers/jsoncpp.git . && \

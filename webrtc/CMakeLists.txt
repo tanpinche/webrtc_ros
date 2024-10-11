@@ -40,15 +40,6 @@ execute_process(
 if(NOT ${get_webrtc_source_result} EQUAL 0)
     message(FATAL_ERROR "cannot fetch WebRTC source code")
 endif()
-message(STATUS "including builtin video codec library")
-execute_process(
-    COMMAND "build/include_builtin_video_codecs"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    RESULT_VARIABLE include_builtin_video_codecs_result
-)
-if(NOT ${include_builtin_video_codecs_result} EQUAL 0)
-    message(FATAL_ERROR "Failed to include builin video codec library as part of build!")
-endif()
 
 message(STATUS "Fetching GN build tool from Google")
 execute_process(
